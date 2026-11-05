@@ -1,93 +1,114 @@
-We're gonna skate to one song, one song only
-Ball so hard, motherfuckers wanna fine me
-So I ball so hard, motherfuckers wanna fine me
-But first niggas gotta find me
-What's fifty grand to a motherfucker like me?
-Can you please remind me?
-Ball so hard, this shit crazy
-Y'all don't know that don't shit faze me
-The Nets could go 0 for 82
-And I look at you like this shit gravy
-Ball so hard, this shit weird
-We ain't even 'posed to be here
-Ball so hard, but since we here
-It's only right that we'd be fair
-Psycho, I'm liable to go Michael
-Take your pick, Jackson, Tyson, Jordan, Game 6
-Ball so hard, got a broke clock
-Rollies that don't tick-tock
-Audemars that's losing time
-Hidden behind all these big rocks
-Ba-Ball so hard, I'm shocked too
-I'm supposed to be locked up too
-You escaped what I escape
-You'd be in Paris getting fucked up too
-Ba-Ball so hard, let's get faded, Le Meurice for like six days
-Gold bottles, scold models, spillin' Ace on my sick J's
-Ba-Ball so hard, bitch, behave, just might let you meet 'Ye
-Chi-Towns, D. Rose, I'm moving the Nets, BK
-Ball so hard motherfuckers wanna fine me
-That shit cray
-That shit cray
-That shit cray
-Ball so hard motherfuckers wanna fine me
-That shit cray
-That shit cray
-That shit cray
-She said, "Ye, can we get married at the mall?"
-I said, "Look, you need to crawl 'fore you ball"
-Come and meet me in the bathroom stall
-And show me why you deserve to have it all
-Ball so hard
-That shit cray
-(That shit cray)
-Ain't it Jay?
-Ball so hard
-What she order?
-(What she order?)
-Fish fillet?
-Ball so hard
-Yo' whip so cold
-(Whip so cold)
-This old thing?
-Ball so hard
-Act like you'll never be around motherfuckers like this again
-Bougie girl, grab her hand
-Fuck that bitch, she don't wanna dance
-'Scuse my French, but I'm in France
-Haha, I'm just sayin'
-Prince William's ain't do it right if you ask me
-'Cause I was him, I would've married Kate and Ashley
-What's Gucci, my nigga?
-What's Louis, my killer?
-What's drugs, my dealer?
-What's that jacket, Margiela?
-Doctors say I'm the illest
-'Cause I'm suffering from realness
-Got my niggas in Paris and they going gorillas, huh?
-I don't even know what that means
-No one knows what it means, but it's provocative
-No, it's not, it's gross
-It gets the people goin'
-Ball so hard motherfuckers wanna fine me
-Ball so hard motherfuckers wanna fine me
-You are now watching the throne
-Don't let me get in my zone
-Don't let me get in my zone
-Don't let me get in my zone
-These other niggas is lyin'
-Actin' like the summer ain't mine
-I got that hot bitch in my home
-You know how many hot bitches I own?
-Don't let me get in my zone
-Don't let me get in my zone
-Don't let me get in my zone
-Don't let me get in my zone
-The stars is in the buildin'
-They hands is to the ceilin'
-I know I'm 'bout to kill it
-How you know I got that feelin'?
-You are now watching the throne
-Don't let me into my zone
-Don't let me into my zone
-I'm definitely in my zone
+# Inception
+
+A small web infrastructure run with **Docker Compose**: NGINX, WordPress with PHP-FPM, and MariaDB, each in its own container built from Debian and served over HTTPS (TLS 1.3).
+
+42 system administration project.
+
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![NGINX](https://img.shields.io/badge/NGINX-TLS_1.3-009639?logo=nginx&logoColor=white)
+![WordPress](https://img.shields.io/badge/WordPress-PHP--FPM_8.1-21759B?logo=wordpress&logoColor=white)
+![MariaDB](https://img.shields.io/badge/MariaDB-003545?logo=mariadb&logoColor=white)
+
+## Architecture
+
+```
+                 HTTPS :443 (TLS 1.3)
+   browser  ───────────────────────────►  nginx
+                                            │  FastCGI :9000
+                                            ▼
+                                        wordpress  (PHP-FPM 8.1 + WP-CLI)
+                                            │  :3306
+                                            ▼
+                                         mariadb
+
+   volumes   ~/data/wordpress  →  shared by nginx and wordpress
+             ~/data/mariadb    →  database files
+   network   private bridge network "inception"
+```
+
+## What's inside
+
+- **Three custom images**, each built from `debian:bullseye` with its own Dockerfile (no ready-made service images)
+- **NGINX** is the only entry point: port 443 only, TLS 1.3, self-signed certificate generated at build time
+- **WordPress** runs on PHP-FPM 8.1 and is installed automatically with WP-CLI on first start, with an administrator and an editor account
+- **MariaDB** creates the database and its user on first start
+- **Docker secrets** for passwords, **bind-mounted volumes** for persistence, and **automatic restart** on failure
+
+## Run it
+
+Requirements: Linux, Docker and Docker Compose.
+
+**1. Create the configuration files**, which are not versioned.
+
+`inception/srcs/.env`
+```env
+WP_PATH=/var/www/html
+WP_TITLE=Inception
+```
+
+`inception/secrets/credentials.txt`
+```env
+DB_HOST=mariadb
+DB_NAME=wordpress
+WP_URL=https://<login>.42.fr
+WP_USERADMIN=<admin_user>
+WP_EMAILADMIN=<admin_email>
+WP_USERDUMMY=<editor_user>
+WP_EMAILDUMMY=<editor_email>
+```
+
+`inception/secrets/db_password.txt`
+```env
+DB_USER=<db_user>
+DB_PASSWORD=<db_password>
+```
+
+`inception/secrets/db_root_password.txt`
+```env
+DB_USER=<db_user>
+DB_PASSWORD=<db_password>
+WP_PASSWORDADMIN=<admin_password>
+WP_PASSWORDDUMMY=<editor_password>
+```
+
+**2. Point the domain to your machine.**
+
+```bash
+echo "127.0.0.1 tpicoule.42.fr" | sudo tee -a /etc/hosts
+```
+
+**3. Start the stack.**
+
+```bash
+cd inception
+make
+```
+
+Then open **https://tpicoule.42.fr** and accept the self-signed certificate.
+
+## Makefile targets
+
+| Target | Effect |
+|---|---|
+| `make` | Creates `~/data/*`, builds the images and starts the containers |
+| `make stop` | Stops the containers |
+| `make clean` | Stops everything, removes the Docker volumes and prunes images |
+| `make fclean` | `clean`, then deletes `~/data` |
+
+> [!WARNING]
+> `make clean` runs `docker system prune -a` and removes **every** Docker volume on the machine, not only this project's.
+
+## Structure
+
+```
+inception/
+├── Makefile
+├── secrets/                    (not versioned, see above)
+└── srcs/
+    ├── docker-compose.yml
+    ├── .env                    (not versioned, see above)
+    └── requirements/
+        ├── nginx/      Dockerfile, conf/nginx.conf
+        ├── wordpress/  Dockerfile, conf/www.conf, tools/script_w.sh
+        └── mariadb/    Dockerfile, conf/maria.conf, tools/script.sh
+```
